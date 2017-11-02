@@ -1,14 +1,63 @@
 import getopt
 import sys
 import timeit
+from multiprocessing import Pool
 
 import display
 from genetic_algorithm import GA, Population, Equation
 from wisdom_of_crowds import WOC
 
 
+def run_ga(data: tuple):
+    """
+    Runs the genetic-algorithm. Thread-safe.
+
+    Args:
+        data (tuple): A tuple of the number of the iteration executing the function, the number of repetitions, the
+                      equation to use for the genetic algorithm, the crossover rate, the mutation rate, the population
+                      size, the number of generations, and whether to display graphs, and whether the output is verbose.
+                      (i.e. (1, 10, Equation, 0.9, 0.001, 100, 1000, True, False))
+
+    Returns:
+        (Gene): Returns the fittest gene of the algorithm.
+    """
+    iteration_number, repetitions, equation, crossover_rate, mutation_rate, population_size, generations, show_display, is_verbose = data
+    f = format('{0:<20} {1}')
+    print('GA %s of %s' % (iteration_number, repetitions))
+
+    # Start GA
+    tic = timeit.default_timer()
+
+    ga = GA(crossover_rate, mutation_rate)
+    population = Population(population_size, equation)
+
+    population.initialize()
+
+    if is_verbose:
+        print(f.format('(GA %s) Generation 0: ' % iteration_number, population.fittest.distance))
+
+    # Evolve population
+    for g in range(generations):
+        population = ga.evolve(population)
+        if is_verbose:
+            print(f.format('(GA %s) Generation %s: ' % (iteration_number, g + 1), population.fittest.distance))
+
+            # TODO: Add GA graphs (in separate thread)
+
+    toc = timeit.default_timer()
+    # End GA algorithm
+
+    if is_verbose:
+        print(f.format('(GA %s) Fittest' % iteration_number, population.fittest))
+        print(f.format('(GA %s) Fittest Fitness.' % iteration_number, population.fittest.fitness))
+
+    print(f.format('(GA %s) Time (seconds)' % iteration_number, toc - tic) + '\n')
+
+    return toc - tic, population.fittest
+
+
 def solve(equation: str, mutation_rate: float, crossover_rate: float, population_size: int, generations: int,
-          repetitions: int, threshold: float, is_verbose: bool, show_display: bool):
+          repetitions: int, threshold: float, threads: int, is_verbose: bool, show_display: bool):
     """
     Solves a given 3-SAT 'equation' with the supplied parameters via GA and WOC.
 
@@ -20,64 +69,39 @@ def solve(equation: str, mutation_rate: float, crossover_rate: float, population
         generations (int): Number of generations for genetic algorithm.
         repetitions (int): Number of genetic algorithms to run.
         threshold (float): Threshold limit to use for wisdom of crowds algorithm.
+        threads (int): Number of threads to use in genetic algorithm.
         is_verbose (bool): Whether verbose output should be displayed.
         show_display (bool): Whether graphical output should be displayed.
     """
     f = format('{0:<20} {1}')
 
-    # TODO: Break apart equation into some sort of gene accepting object.
     eq = Equation(equation)
 
-    # Store the fittest of each GA run
-    ga_results = []
+    # Used to populate thread function parameters
+    def ga_it():
+        for i in range(1, repetitions + 1):
+            yield i, repetitions, eq, crossover_rate, mutation_rate, population_size, generations, show_display, is_verbose
 
-    #region GA
-    # TODO: Split into multiple threads
-    for i in range(repetitions):
-        print('GA %s of %s' % (i + 1, repetitions))
+    # Run GAs
+    pool = Pool(processes=threads)
+    it = pool.map(run_ga, ga_it(), chunksize=1)
+    ga_results = [i[1] for i in it]
+    ga_times = [i[0] for i in it]
 
-        # Start GA
-        tic = timeit.default_timer()
-
-        ga = GA(crossover_rate, mutation_rate)
-        population = Population(population_size, eq)
-
-        population.initialize()
-
-        if is_verbose:
-            print(f.format('Generation 0: ', population.fittest.distance))
-
-        # Evolve population
-        for g in range(generations):
-            population = ga.evolve(population)
-            if is_verbose:
-                print(f.format('Generation %s: ' % (g + 1), population.fittest.distance))
-
-            # TODO: Add GA graphs (in separate thread)
-
-        toc = timeit.default_timer()
-        # End GA algorithm
-
-        if is_verbose:
-            print(f.format('Fittest', population.fittest))
-            print(f.format('Fittest Fitness.', population.fittest.fitness))
-
-        print(f.format('Time (seconds)', toc - tic) + '\n')
-
-        ga_results.append(population.fittest)
-    #endregion GA
-
-    #region WOC
+    # Run WOC
     tic = timeit.default_timer()
     woc = WOC(ga_results, threshold)
     woc.aggregate()
     toc = timeit.default_timer()
-    #endregion WOC
 
+    # Print final results
     ga_fitnesses = [g.fitness for g in ga_results]
     print(f.format('GA Min Dist.', min(ga_fitnesses)))
     print(f.format('GA Max Dist.', max(ga_fitnesses)))
     print(f.format('GA Avg Dist.', sum(ga_fitnesses) / len(ga_fitnesses)))
+    print(f.format('GA Min Time (seconds)', min(ga_times)))
+    print(f.format('GA Max Time (seconds)', max(ga_times)))
+    print(f.format('GA Avg Time (seconds)', sum(ga_times) / len(ga_times)))
     print(f.format('WOC Dist.', woc.result))
     print(f.format('WOC Time (seconds)', toc - tic))
 
@@ -94,7 +118,7 @@ def usage():
     f = format('{0:<40} {1}')
     r = list()
     r.append('Usage: solver -e sat -c crossover-rate -m mutation-rate -p population-size -g number-of-generations -r ' +
-             'repetitions -a aggregate-limit [-v] [-d]')
+             'repetitions -a aggregate-limit [-t thread-count] [-v] [-d]')
     r.append('')
     r.append('Options:')
     r.append(f.format('\t-h --help', 'Display command usage.'))
@@ -105,6 +129,7 @@ def usage():
     r.append(f.format('\t-g --generation number-of-generations', 'Number of generations to use in genetic algorithm.'))
     r.append(f.format('\t-r --repeat repetitions', 'Number of genetic algorithm runs to aggregate for WOC.'))
     r.append(f.format('\t-a --aggregate aggregate-limit', 'Aggregate minimum threshold limit for WOC algorithm.'))
+    r.append(f.format('\t-t threads thread-count', 'Number of threads to use in the genetic-algorithm.'))
     r.append(f.format('\t-v --verbose', 'Display verbose output (time, statistics, etc.).'))
     r.append(f.format('\t-d --display', 'Display graphical output.'))
     r.append('')
@@ -115,12 +140,13 @@ if __name__ == '__main__':
     equation, crossover_rate, mutation_rate = None, None, None
     population_size, generations, repetitions, aggregate = None, None, None, None
     is_verbose, show_display = False, False
+    threads = None
 
     # Get command line arguments
     try:
-        shorthand_args = 'he:c:m:p:g:r:a:vd'
+        shorthand_args = 'he:c:m:p:g:r:a:t:vd'
         longhand_args = ['help', 'equation=', 'crossover=', 'mutation=', 'population=', 'generations=', 'repetitions=',
-                         'aggregate=', 'verbose', 'display']
+                         'aggregate=', 'threads=', 'verbose', 'display']
         opts, args = getopt.getopt(sys.argv[1:], shorthand_args, longhand_args)
     except getopt.GetoptError as e:
         print(e)
@@ -194,6 +220,17 @@ if __name__ == '__main__':
                 print(e)
                 usage()
                 sys.exit(2)
+        elif opt in ('-t', '--threads'):
+            # If -t "thread_count" not given, defaults to cpu_count()
+            try:
+                threads = int(arg)
+
+                if threads < 1:
+                    raise ValueError('Threads must be > 0!')
+            except ValueError as e:
+                print(e)
+                usage()
+                sys.exit(2)
         elif opt in ('-v', '--verbose'):
             is_verbose = True
         elif opt in ('-d', '--display'):
@@ -213,5 +250,6 @@ if __name__ == '__main__':
           generations,
           repetitions,
           aggregate,
+          threads,
           is_verbose,
           show_display)
