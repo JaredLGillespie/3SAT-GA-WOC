@@ -1,11 +1,46 @@
 import getopt
+import math
+import os
 import sys
 import timeit
 from multiprocessing import Pool
 
 import display
-from genetic_algorithm import GA, Population, Equation
+from genetic_algorithm import GA, Population, Equation, Gene
 from wisdom_of_crowds import WOC
+
+
+def load_equation(file_path: str):
+    """
+    Load and read file with SAT equation. File should be of the following format:
+        header
+        p cnf variables clauses
+        vi vii viii
+        vj vjj vjjj
+        ...
+    Utilize https://toughsat.appspot.com/ for correctly formatted problems in 3CNF format.
+
+    Args:
+        file_path (str): Path of file to read.
+
+    Returns:
+        Equation: Built 3CNF equation object.
+    """
+    variables, clauses = 0, 0
+    cunjunctives = []
+    with open(file_path, 'r') as file:
+        i = 0
+        for ln in file.read().split('\n'):
+            i += 1
+            # Skip first line
+            if i == 1:
+                continue
+            elif i == 2:
+                variables, clauses = tuple(map(int, ln.split()[2:]))
+            elif ln:
+                cunjunctives.append(list(map(int, ln.split()[:-1])))
+
+    return Equation(variables, clauses, cunjunctives)
 
 
 def run_ga(data: tuple):
@@ -34,13 +69,13 @@ def run_ga(data: tuple):
     population.initialize()
 
     if is_verbose:
-        print(f.format('(GA %s) Generation 0: ' % iteration_number, population.fittest.distance))
+        print(f.format('(GA %s) Generation 0: ' % iteration_number, population.fittest.fitness))
 
     # Evolve population
     for g in range(generations):
         population = ga.evolve(population)
         if is_verbose:
-            print(f.format('(GA %s) Generation %s: ' % (iteration_number, g + 1), population.fittest.distance))
+            print(f.format('(GA %s) Generation %s: ' % (iteration_number, g + 1), population.fittest.fitness))
 
             # TODO: Add GA graphs (in separate thread)
 
@@ -56,7 +91,7 @@ def run_ga(data: tuple):
     return toc - tic, population.fittest
 
 
-def solve(equation: str, mutation_rate: float, crossover_rate: float, population_size: int, generations: int,
+def solve(equation: Equation, mutation_rate: float, crossover_rate: float, population_size: int, generations: int,
           repetitions: int, threshold: float, threads: int, is_verbose: bool, show_display: bool):
     """
     Solves a given 3-SAT 'equation' with the supplied parameters via GA and WOC.
@@ -75,12 +110,10 @@ def solve(equation: str, mutation_rate: float, crossover_rate: float, population
     """
     f = format('{0:<20} {1}')
 
-    eq = Equation(equation)
-
     # Used to populate thread function parameters
     def ga_it():
         for i in range(1, repetitions + 1):
-            yield i, repetitions, eq, crossover_rate, mutation_rate, population_size, generations, show_display, is_verbose
+            yield i, repetitions, equation, crossover_rate, mutation_rate, population_size, generations, show_display, is_verbose
 
     # Run GAs
     pool = Pool(processes=threads)
@@ -122,7 +155,7 @@ def usage():
     r.append('')
     r.append('Options:')
     r.append(f.format('\t-h --help', 'Display command usage.'))
-    r.append(f.format('\t-e --equation sat', 'Boolean satisfiability problem to solve.'))
+    r.append(f.format('\t-f --file sat-file', 'File with 3-CNF to solve.'))
     r.append(f.format('\t-c --crossover crossover-rate', 'Crossover percentage rate between [0, 1].'))
     r.append(f.format('\t-m --mutation mutation-rate', 'Mutation percentage rate between [0, 1].'))
     r.append(f.format('\t-p --population population-size', 'Size of populations for genetic algorithm.'))
@@ -144,8 +177,8 @@ if __name__ == '__main__':
 
     # Get command line arguments
     try:
-        shorthand_args = 'he:c:m:p:g:r:a:t:vd'
-        longhand_args = ['help', 'equation=', 'crossover=', 'mutation=', 'population=', 'generations=', 'repetitions=',
+        shorthand_args = 'hf:c:m:p:g:r:a:t:vd'
+        longhand_args = ['help', 'file=', 'crossover=', 'mutation=', 'population=', 'generations=', 'repetitions=',
                          'aggregate=', 'threads=', 'verbose', 'display']
         opts, args = getopt.getopt(sys.argv[1:], shorthand_args, longhand_args)
     except getopt.GetoptError as e:
@@ -158,8 +191,12 @@ if __name__ == '__main__':
         if opt in ('-h', '--help'):
             usage()
             sys.exit(2)
-        elif opt in ('-e', '--equation'):
-            equation = arg
+        elif opt in ('-f', '--file'):
+            if os.path.isabs(arg):
+                file = arg
+            else:
+                file = os.path.join(os.getcwd(), arg)
+            equation = load_equation(file)
         elif opt in ('-c', '--crossover'):
             try:
                 crossover_rate = float(arg)

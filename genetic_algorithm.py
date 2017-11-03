@@ -1,28 +1,103 @@
-from math import *
 import itertools
+import math
 import random
 
 
 class Equation(object):
     """Object representation of equation."""
-    # TODO: Create equation object structure to be passed along each Gene
 
-    def __init__(self, equation: str):
+    def __init__(self, variables: int, clauses: int, conjunctives: list):
         """
         Initializes object instance.
 
         Args:
-            equation (str): String representation of equation.
+            variables (int): Number of variables.
+            clauses (int): Number of clauses.
+            conjunctives (list): Conjunctives of 3-SAT.
+                Should be of form [(i, j, k), ...] where i, j, k are positive or negative integers representing
+                a variable.
         """
-        self._equation = equation
+        self._variables = variables
+        self._clauses = clauses
+        self._conjunctives = conjunctives
+        self._equation = self.__build_equation()
 
-    def _repr_(self):
+    def __repr__(self):
+        """
+        String representation of object.
+
+        Returns:
+            (str): String representation of object.
+        """
         return self._equation
 
+    def __build_equation(self):
+        """
+        Builds the equation string representation.
+
+        Returns:
+            (str): String representation of equation.
+        """
+        e = []
+        for i, conj in enumerate(self._conjunctives):
+            e.append('(')
+            for j, v in enumerate(conj):
+                if v < 0:
+                    e.append('¬' + str(abs(v)))
+                else:
+                    e.append(str(v))
+
+                if j != len(conj) - 1:
+                    e.append('∨')
+
+            e.append(')')
+            if i != len(self._conjunctives) - 1:
+                e.append('∧')
+        return ''.join(e)
+
     @property
-    def variables(self):
-        # TODO: Implement variables.
-        raise NotImplementedError('TODO: Implement this!')
+    def clauses(self) -> int:
+        """
+        Gets clauses property of object.
+
+        Returns:
+            (int): Clauses.
+        """
+        return self._clauses
+
+    @property
+    def variables(self) -> int:
+        """
+        Gets variables property of object.
+
+        Returns:
+            (int): Variables.
+        """
+        return self._variables
+
+    def check(self, gene):
+        """
+        Validates whether given 'gene' passes the 3-SAT equation.
+
+        Args:
+            gene (Gene): The Gene to validate.
+
+        Returns:
+            (int, bool): Tuple of number of clauses passed and whether all clauses passed.
+        """
+        passed_clauses = 0
+        for conjunctive in self._conjunctives:
+            for v in conjunctive:
+                if v < 0:
+                    if not gene[abs(v) - 1]:
+                        passed_clauses += 1
+                        break
+                else:
+                    if gene[v - 1]:
+                        passed_clauses += 1
+                        break
+
+        return passed_clauses, passed_clauses == self._clauses
 
 
 class Gene(object):
@@ -35,10 +110,22 @@ class Gene(object):
             chromosomes (str): Chromosomes of gene.
             equation (Equation): 3-SAT equation gene is compared against.
         """
+        self._equation = equation
         self._chromosomes = chromosomes
         self._valid = None
         self._fitness = None
-        self._equation = None
+
+    def __getitem__(self, index: int):
+        """
+        Gets chromosome at index.
+
+        Args:
+            index (int): Chromosome index.
+
+        Returns:
+            (Gene): Chromosome at index.
+        """
+        return self._chromosomes[index]
 
     def __len__(self) -> int:
         """
@@ -58,12 +145,36 @@ class Gene(object):
         """
         return self.chromosomes
 
+    def __setitem__(self, key: int, value: int):
+        """
+        Sets chromosome at index.
+
+        Args:
+            key (int): Index to insert chromosome.
+            value (Gene): Value of chromosome.
+        """
+        self._chromosomes[key] = value
+        self._fitness = None
+        self._valid = None
+
     @property
     def chromosomes(self):
+        """
+        Gets chromosomes property.
+
+        Returns:
+            (str): Chromosomes.
+        """
         return self._chromosomes
 
     @chromosomes.setter
     def chromosomes(self, value: str):
+        """
+        Sets chromosomes property of object.
+
+        Args:
+            value (str): New chromosomes property.
+        """
         self._chromosomes = value
         self._fitness = None
         self._valid = None
@@ -76,9 +187,10 @@ class Gene(object):
         Returns:
             (float): Fitness of gene.
         """
-        if not self.fitness is None:
-            # TODO: Create fitness function and assign to self._fitness
-            pass
+        if self._fitness is None:
+            clauses, passed = self._equation.check(self)
+            self._fitness = clauses / self._equation.clauses
+            self._valid = passed
         return self._fitness
 
     @property
@@ -92,8 +204,9 @@ class Gene(object):
             (bool): Validity of gene.
         """
         if self._valid is None:
-            # TODO: Create validity function and assign to self._valid
-            pass
+            clauses, passed = self._equation.check(self)
+            self._fitness = clauses / self._equation.clauses
+            self._valid = passed
         return self._valid
 
     def copy(self):
@@ -149,7 +262,7 @@ class Population(object):
 
         Args:
             key (int): Index to insert gene.
-            value (Gene): Route to gene.
+            value (Gene): Value of gene.
         """
         self._genes[key] = value
         self._fittest = None
@@ -188,7 +301,7 @@ class Population(object):
         Genes of population.
 
         Returns:
-            (list): Routes of population.
+            (list): Genes of population.
         """
         return self._genes[:]
 
@@ -215,7 +328,7 @@ class Population(object):
     def initialize(self):
         """Initializes population by generating random genes."""
         for i in range(self.size):
-            chromosomes = ''.join([random.choice([0, 1]) for _ in range(len(self._equation.variables))])
+            chromosomes = ''.join([str(random.choice([0, 1])) for _ in range(self._equation.variables)])
             self.add(Gene(self._equation, chromosomes))
 
 
@@ -286,8 +399,8 @@ class GA(object):
         Performs a crossover between two parents, returning a child.
 
         Args:
-            parent1 (Route): First parent gene.
-            parent2 (Route): Second parent gene.
+            parent1 (Gene): First parent gene.
+            parent2 (Gene): Second parent gene.
 
         Returns:
             (Gene): Child gene.
