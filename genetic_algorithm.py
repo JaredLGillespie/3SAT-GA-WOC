@@ -75,12 +75,12 @@ class Equation(object):
         """
         return self._variables
 
-    def check(self, gene):
+    def check(self, chromosome):
         """
-        Validates whether given 'gene' passes the 3-SAT equation.
+        Validates whether given 'chromosome' passes the 3-SAT equation.
 
         Args:
-            gene (Gene): The Gene to validate.
+            chromosome (Chromosome): The Chromosome to validate.
 
         Returns:
             (int, bool): Tuple of number of clauses passed and whether all clauses passed.
@@ -89,52 +89,52 @@ class Equation(object):
         for conjunctive in self._conjunctives:
             for v in conjunctive:
                 if v < 0:
-                    if not gene[abs(v) - 1]:
+                    if not chromosome[abs(v) - 1]:
                         passed_clauses += 1
                         break
                 else:
-                    if gene[v - 1]:
+                    if chromosome[v - 1]:
                         passed_clauses += 1
                         break
 
         return passed_clauses, passed_clauses == self._clauses
 
 
-class Gene(object):
-    """Object representation of gene."""
+class Chromosome(object):
+    """Object representation of chromosome."""
 
-    def __init__(self, equation: Equation, chromosomes: str):
+    def __init__(self, equation: Equation, genes: list):
         """Initializes object instance.
 
         Args:
-            chromosomes (str): Chromosomes of gene.
-            equation (Equation): 3-SAT equation gene is compared against.
+            genes (str): Genes of chromosome.
+            equation (Equation): 3-SAT equation chromosome is compared against.
         """
         self._equation = equation
-        self._chromosomes = chromosomes
+        self._genes = genes
         self._valid = None
         self._fitness = None
 
     def __getitem__(self, index: int):
         """
-        Gets chromosome at index.
+        Gets genes at index.
 
         Args:
-            index (int): Chromosome index.
+            index (int): Gene index.
 
         Returns:
-            (Gene): Chromosome at index.
+            (Gene): Gene at index.
         """
-        return self._chromosomes[index]
+        return self._genes[index]
 
     def __len__(self) -> int:
         """
         Length of object.
 
         Returns:
-            (int): Length of chromosomes.
+            (int): Number of genes in chromosome.
         """
-        return len(self._chromosomes)
+        return len(self._genes)
 
     def __repr__(self) -> str:
         """
@@ -143,7 +143,7 @@ class Gene(object):
         Returns:
             (str): String representation of object.
         """
-        return self.chromosomes
+        return ''.join(self._genes)
 
     def __setitem__(self, key: int, value: int):
         """
@@ -153,39 +153,17 @@ class Gene(object):
             key (int): Index to insert chromosome.
             value (Gene): Value of chromosome.
         """
-        self._chromosomes[key] = value
-        self._fitness = None
-        self._valid = None
-
-    @property
-    def chromosomes(self):
-        """
-        Gets chromosomes property.
-
-        Returns:
-            (str): Chromosomes.
-        """
-        return self._chromosomes
-
-    @chromosomes.setter
-    def chromosomes(self, value: str):
-        """
-        Sets chromosomes property of object.
-
-        Args:
-            value (str): New chromosomes property.
-        """
-        self._chromosomes = value
+        self._genes[key] = value
         self._fitness = None
         self._valid = None
 
     @property
     def fitness(self):
         """
-        Calculates fitness of gene.
+        Calculates fitness of chromosome.
 
         Returns:
-            (float): Fitness of gene.
+            (float): Fitness of chromosome.
         """
         if self._fitness is None:
             clauses, passed = self._equation.check(self)
@@ -194,14 +172,36 @@ class Gene(object):
         return self._fitness
 
     @property
-    def valid(self) -> bool:
+    def genes(self):
         """
-        Returns 'true' if gene is valid, else 'false'.
-
-        Gene is valid if passes 3-SAT equation..
+        Gets genes property.
 
         Returns:
-            (bool): Validity of gene.
+            (str): Genes.
+        """
+        return self._genes
+
+    @genes.setter
+    def chromosomes(self, value: str):
+        """
+        Sets genes property of object.
+
+        Args:
+            value (str): New genes property.
+        """
+        self._genes = value
+        self._fitness = None
+        self._valid = None
+
+    @property
+    def valid(self) -> bool:
+        """
+        Returns 'true' if chromosome is valid, else 'false'.
+
+        Chromosome is valid if passes 3-SAT equation..
+
+        Returns:
+            (bool): Validity of chromosome.
         """
         if self._valid is None:
             clauses, passed = self._equation.check(self)
@@ -211,12 +211,12 @@ class Gene(object):
 
     def copy(self):
         """
-        Creates and returns copy of gene object.
+        Creates and returns copy of chromosome object.
 
         Returns:
-            (Gene): Returns copy of gene.
+            (Chromosome): Returns copy of chromosome.
         """
-        return Gene(self._equation, self._chromosomes)
+        return Chromosome(self._equation, self._genes)
 
 
 class Population(object):
@@ -232,20 +232,20 @@ class Population(object):
         """
         self._size = size
         self._equation = equation
-        self._genes = []
+        self._chromosomes = []
         self._fittest = None
 
-    def __getitem__(self, index: int):
+    def __getitem__(self, index: int) -> Chromosome:
         """
-        Gets gene at index.
+        Gets chromosome at index.
 
         Args:
-            index (int): Gene index.
+            index (int): Chromosome index.
 
         Returns:
-            (Gene): Gene at index.
+            (Chromosome): Chromosome at index.
         """
-        return self._genes[index]
+        return self._chromosomes[index]
 
     def __len__(self) -> int:
         """
@@ -254,17 +254,17 @@ class Population(object):
         Returns:
             (int): Current size of population.
         """
-        return len(self._genes)
+        return len(self._chromosomes)
 
-    def __setitem__(self, key: int, value: Gene):
+    def __setitem__(self, key: int, value: Chromosome):
         """
-        Sets gene at index.
+        Sets chromosome at index.
 
         Args:
-            key (int): Index to insert gene.
-            value (Gene): Value of gene.
+            key (int): Index to insert chromosome.
+            value (Chromosome): Value of chromosome.
         """
-        self._genes[key] = value
+        self._chromosomes[key] = value
         self._fittest = None
 
     @property
@@ -280,30 +280,30 @@ class Population(object):
     @property
     def fittest(self):
         """
-        Gets the fittest gene.
+        Gets the fittest chromosome.
 
         Returns:
-            (Gene): The most fit gene.
+            (Chromosome): The most fit chromosome.
         """
         if self._fittest is None:
-            for gene in self._genes:
+            for chromosome in self._chromosomes:
                 if self._fittest is None:
-                    self._fittest = gene
+                    self._fittest = chromosome
                 else:
-                    # If two most fit gene with the same fitness occur, the one which comes first is selected...
-                    if self._fittest.fitness < gene.fitness:
-                        self._fittest = gene
+                    # If two most fit chromosomes with the same fitness occur, the one which comes first is selected...
+                    if self._fittest.fitness < chromosome.fitness:
+                        self._fittest = chromosome
         return self._fittest
 
     @property
-    def genes(self) -> list:
+    def chromosomes(self) -> list:
         """
-        Genes of population.
+        Chromosomes of population.
 
         Returns:
-            (list): Genes of population.
+            (list): Chromosomes of population.
         """
-        return self._genes[:]
+        return self._chromosomes[:]
 
     @property
     def size(self) -> int:
@@ -315,21 +315,21 @@ class Population(object):
         """
         return self._size
 
-    def add(self, gene: Gene):
+    def add(self, chromosome: Chromosome):
         """
-        Adds a gene to the population.
+        Adds a chromosome to the population.
 
         Args:
-            gene (Gene): The gene to add.
+            chromosome (Chromosome): The chromosome to add.
         """
-        self._genes.append(gene)
+        self._chromosomes.append(chromosome)
         self._fittest = None
 
     def initialize(self):
-        """Initializes population by generating random genes."""
+        """Initializes population by generating random chromosomes."""
         for i in range(self.size):
-            chromosomes = ''.join([str(random.choice([0, 1])) for _ in range(self._equation.variables)])
-            self.add(Gene(self._equation, chromosomes))
+            genes = ''.join([str(random.choice([0, 1])) for _ in range(self._equation.variables)])
+            self.add(Chromosome(self._equation, genes))
 
 
 class GA(object):
@@ -376,11 +376,11 @@ class GA(object):
 
                 new_population.add(child)
 
-        # Add fittest gene from old population to new population to keep the new size equal to old
+        # Add fittest chromosome from old population to new population to keep the new size equal to old
         pop_len_diff = len(population) - len(new_population)
 
         if pop_len_diff > 0:
-            pop_points_all: list = population.genes[:]
+            pop_points_all: list = population.chromosomes[:]
             pop_points_all.sort(key=lambda x: x.fitness, reverse=True)
             pop_points_fit = pop_points_all[:pop_len_diff]
 
@@ -394,16 +394,16 @@ class GA(object):
         return new_population
 
     @staticmethod
-    def crossover(self, parent1: Gene, parent2: Gene):
+    def crossover(self, parent1: Chromosome, parent2: Chromosome):
         """
         Performs a crossover between two parents, returning a child.
 
         Args:
-            parent1 (Gene): First parent gene.
-            parent2 (Gene): Second parent gene.
+            parent1 (Chromosome): First parent chromosome.
+            parent2 (Chromosome): Second parent chromosome.
 
         Returns:
-            (Gene): Child gene.
+            (Chromosome): Child chromosome.
         """
         # TODO: Implement crossover function.
         return None
@@ -432,15 +432,15 @@ class GA(object):
         return index - 1 if index > 0 else index
 
     @staticmethod
-    def mutate(gene: Gene):
+    def mutate(chromosome: Chromosome):
         """
-        Performs a mutation of a gene.
+        Performs a mutation of a chromosome.
 
         Args:
-            gene (Gene): Gene to mutate.
+            chromosome (Chromosome): Chromosome to mutate.
 
         Returns:
-            gene (Gene): Mutated gene.
+            chromosome (Chromosome): Mutated chromosome.
         """
         # TODO: Implement mutation function.
         return None

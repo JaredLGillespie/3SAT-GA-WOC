@@ -6,7 +6,7 @@ import timeit
 from multiprocessing import Pool
 
 import display
-from genetic_algorithm import GA, Population, Equation, Gene
+from genetic_algorithm import GA, Population, Equation, Chromosome
 from wisdom_of_crowds import WOC
 
 
