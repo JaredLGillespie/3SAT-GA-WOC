@@ -6,7 +6,7 @@ import timeit
 from multiprocessing import Pool
 
 import display
-from genetic_algorithm import GA, Population, Equation, Chromosome
+from genetic_algorithm import GA, Population, Equation
 from wisdom_of_crowds import WOC
 
 
@@ -116,27 +116,46 @@ def solve(equation: Equation, mutation_rate: float, crossover_rate: float, popul
             yield i, repetitions, equation, crossover_rate, mutation_rate, population_size, generations, show_display, is_verbose
 
     # Run GAs
-    pool = Pool(processes=threads)
-    it = pool.map(run_ga, ga_it(), chunksize=1)
-    ga_results = [i[1] for i in it]
-    ga_times = [i[0] for i in it]
+    ga_results = []
+    ga_times = []
+
+    ga_toc = 0
+    ga_tic = 0
+    if threads == 0:
+        for d in ga_it():
+            gt, gr = run_ga(d)
+            ga_results.append(gr)
+            ga_times.append(gt)
+    else:
+        ga_tic = timeit.default_timer()
+        pool = Pool(processes=threads)
+        it = pool.map(run_ga, ga_it(), chunksize=1)
+        ga_results = [i[1] for i in it]
+        ga_times = [i[0] for i in it]
+        ga_toc = timeit.default_timer()
 
     # Run WOC
-    tic = timeit.default_timer()
+    woc_tic = timeit.default_timer()
     woc = WOC(ga_results, threshold)
     woc.aggregate()
-    toc = timeit.default_timer()
+    woc_toc = timeit.default_timer()
 
     # Print final results
     ga_fitnesses = [g.fitness for g in ga_results]
-    print(f.format('GA Min Dist.', min(ga_fitnesses)))
-    print(f.format('GA Max Dist.', max(ga_fitnesses)))
-    print(f.format('GA Avg Dist.', sum(ga_fitnesses) / len(ga_fitnesses)))
+    min_fit = min(ga_fitnesses)
+    max_fit = max(ga_fitnesses)
+    avg_fit = sum(ga_fitnesses) / len(ga_fitnesses)
+    print(f.format('Equation', equation))
+    print(f.format('GA Min Fitness', '%s [%s]' % (min_fit, [g for g in ga_results if g.fitness == min_fit][0])))
+    print(f.format('GA Max Fitness',  '%s [%s]' % (max_fit, [g for g in ga_results if g.fitness == max_fit][0])))
+    print(f.format('GA Avg Fitness', avg_fit))
     print(f.format('GA Min Time (seconds)', min(ga_times)))
     print(f.format('GA Max Time (seconds)', max(ga_times)))
     print(f.format('GA Avg Time (seconds)', sum(ga_times) / len(ga_times)))
+    print(f.format('GA Total Time (seconds)', sum(ga_times)))
+    print(f.format('GA Thread Time (seconds)', ga_toc - ga_tic))
     print(f.format('WOC Dist.', woc.result))
-    print(f.format('WOC Time (seconds)', toc - tic))
+    print(f.format('WOC Time (seconds)', woc_toc - woc_tic))
 
     # Display graphs
     if show_display:
@@ -262,8 +281,8 @@ if __name__ == '__main__':
             try:
                 threads = int(arg)
 
-                if threads < 1:
-                    raise ValueError('Threads must be > 0!')
+                if threads < 0:
+                    raise ValueError('Threads must be >= 0!')
             except ValueError as e:
                 print(e)
                 usage()

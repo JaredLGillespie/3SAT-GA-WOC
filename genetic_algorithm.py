@@ -107,7 +107,7 @@ class Chromosome(object):
         """Initializes object instance.
 
         Args:
-            genes (str): Genes of chromosome.
+            genes (list): Genes of chromosome.
             equation (Equation): 3-SAT equation chromosome is compared against.
         """
         self._equation = equation
@@ -143,7 +143,7 @@ class Chromosome(object):
         Returns:
             (str): String representation of object.
         """
-        return ''.join(self._genes)
+        return ''.join(map(str, self._genes))
 
     def __setitem__(self, key: int, value: int):
         """
@@ -156,6 +156,16 @@ class Chromosome(object):
         self._genes[key] = value
         self._fitness = None
         self._valid = None
+
+    @property
+    def equation(self) -> Equation:
+        """
+        Returns equation property of object.
+
+        Returns:
+            (Equation): The equation property of the object.
+        """
+        return self._equation
 
     @property
     def fitness(self):
@@ -182,7 +192,7 @@ class Chromosome(object):
         return self._genes
 
     @genes.setter
-    def chromosomes(self, value: str):
+    def genes(self, value: str):
         """
         Sets genes property of object.
 
@@ -216,7 +226,7 @@ class Chromosome(object):
         Returns:
             (Chromosome): Returns copy of chromosome.
         """
-        return Chromosome(self._equation, self._genes)
+        return Chromosome(self._equation, self._genes[:])
 
 
 class Population(object):
@@ -255,6 +265,15 @@ class Population(object):
             (int): Current size of population.
         """
         return len(self._chromosomes)
+
+    def __repr__(self):
+        """
+        String representation of object.
+
+        Returns:
+            (str): String representation of object.
+        """
+        return str(self._chromosomes)
 
     def __setitem__(self, key: int, value: Chromosome):
         """
@@ -328,7 +347,7 @@ class Population(object):
     def initialize(self):
         """Initializes population by generating random chromosomes."""
         for i in range(self.size):
-            genes = ''.join([str(random.choice([0, 1])) for _ in range(self._equation.variables)])
+            genes = [random.choice([0, 1]) for _ in range(self._equation.variables)]
             self.add(Chromosome(self._equation, genes))
 
 
@@ -394,9 +413,11 @@ class GA(object):
         return new_population
 
     @staticmethod
-    def crossover(self, parent1: Chromosome, parent2: Chromosome):
+    def crossover(parent1: Chromosome, parent2: Chromosome):
         """
-        Performs a crossover between two parents, returning a child.
+        Performs a crossover between two parents, returning a child. Random index to split between left and right
+        parent is chosen. Genes left of split from parent 1 and genes right of split from parent 2 are used to form
+        new child.
 
         Args:
             parent1 (Chromosome): First parent chromosome.
@@ -405,8 +426,15 @@ class GA(object):
         Returns:
             (Chromosome): Child chromosome.
         """
-        # TODO: Implement crossover function.
-        return None
+        split_index = -1
+        if len(parent1) == 2:
+            split_index = 1
+        else:
+            split_index = random.randint(0, len(parent1) - 2)
+
+        genes = parent1[0:split_index] + parent2[split_index:]
+
+        return Chromosome(parent1.equation, genes)
 
     @staticmethod
     def select(fitnesses: list) -> int:
@@ -434,7 +462,7 @@ class GA(object):
     @staticmethod
     def mutate(chromosome: Chromosome):
         """
-        Performs a mutation of a chromosome.
+        Performs a mutation of a chromosome. Randomly mutates a random number of genes in the chromosome.
 
         Args:
             chromosome (Chromosome): Chromosome to mutate.
@@ -442,5 +470,17 @@ class GA(object):
         Returns:
             chromosome (Chromosome): Mutated chromosome.
         """
-        # TODO: Implement mutation function.
-        return None
+        genes = chromosome.genes[:]
+        gene_choices = set(range(len(chromosome)))
+        mutation_indexes = []
+
+        # Mutate between 1 and all genes...
+        for _ in range(random.randint(1, len(chromosome) - 1)):
+            c = random.choice(list(gene_choices))
+            mutation_indexes.append(c)
+            gene_choices.remove(c)
+
+        for i in mutation_indexes:
+            genes[i] = int(not genes[i])
+
+        return Chromosome(chromosome.equation, genes)
