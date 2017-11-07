@@ -71,13 +71,14 @@ def run_ga(data: tuple):
     if is_verbose:
         print(f.format('(GA %s) Generation 0: ' % iteration_number, population.fittest.fitness))
 
+    generational_improvement = [] #for a graph
+
     # Evolve population
     for g in range(generations):
         population = ga.evolve(population)
         if is_verbose:
             print(f.format('(GA %s) Generation %s: ' % (iteration_number, g + 1), population.fittest.fitness))
-
-            # TODO: Add GA graphs (in separate thread)
+            generational_improvement.append(display.GenImprovModel(iteration_number, population.fittest.fitness))
 
     toc = timeit.default_timer()
     # End GA algorithm
@@ -87,6 +88,7 @@ def run_ga(data: tuple):
         print(f.format('(GA %s) Fittest Fitness.' % iteration_number, population.fittest.fitness))
 
     print(f.format('(GA %s) Time (seconds)' % iteration_number, toc - tic) + '\n')
+    display.plot_improvement(generational_improvement)
 
     return toc - tic, population.fittest
 
