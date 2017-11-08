@@ -136,7 +136,7 @@ def solve(equation: Equation, mutation_rate: float, crossover_rate: float, popul
 
     # Run WOC
     woc_tic = timeit.default_timer()
-    woc = WOC(ga_results, threshold)
+    woc = WOC(ga_results, threshold, equation)
     woc.aggregate()
     woc_toc = timeit.default_timer()
 
@@ -154,7 +154,7 @@ def solve(equation: Equation, mutation_rate: float, crossover_rate: float, popul
     print(f.format('GA Avg Time (seconds)', sum(ga_times) / len(ga_times)))
     print(f.format('GA Total Time (seconds)', sum(ga_times)))
     print(f.format('GA Thread Time (seconds)', ga_toc - ga_tic))
-    print(f.format('WOC Dist.', woc.result))
+    print(f.format('WOC Dist.', woc.result.fitness))
     print(f.format('WOC Time (seconds)', woc_toc - woc_tic))
 
     # Display graphs
