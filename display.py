@@ -1,24 +1,60 @@
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
+import numpy as np
 
-# TODO: Add some of these bad boy graphs.
 
-class GenImprovModel(object):
-    def __init__(self, generation, fitness):
-        self.generation = generation
-        self.fitness = fitness
+def histogram(generations: list):
+    """
+    Display GA Histogram of single run.
 
-def plot_improvement(data: list):
-    #plt.plot([1,2,3], [7,5,10]) #x,y
-    for i in range(0, len(data)):
-        plt.plot(data[i].generation, data[i].fitness, 'o')
+    Args:
+        generations (list): GA run generation's fittest fitnesses.
+    """
+    figure = plt.figure()
+    ax = figure.add_subplot(1, 1, 1)
 
-    plt.ylabel("Fitness")
-    plt.xlabel("Generation")
+    # Generations
+    x = list(range(len(generations)))
+    y = generations
+
+    ax.plot(x, y, color='black')
+    plt.xlim([0, len(generations)])
+    ymin = round(min(generations), 1)
+    plt.ylim([ymin, 1])
+    plt.yticks(np.arange(round(min(y), 1), 1 + 0.01, 0.01))
+
+    # Labels
+    plt.xlabel('generation')
+    plt.ylabel('fitness')
+    plt.title('GA Fittest Histogram')
+
+
+def histograms(*args):
+    """
+    Display GA Histogram of multiple runs.
+
+    Args:
+        *args (args): Arguments should be lists containing generations fittest fitnesses.
+    """
+    figure = plt.figure()
+    ax = figure.add_subplot(1, 1, 1)
+
+    for generations in args:
+        # Generations
+        x = list(range(len(generations)))
+        y = generations
+
+        ax.plot(x, y, color='black')
+
+    plt.xlim([0, len(args[0])])
+    ymin = round(min(g[0] for g in args), 1)
+    plt.ylim([ymin, 1])
+    plt.yticks(np.arange(ymin, 1 + 0.01, 0.01))
+
+    # Labels
+    plt.xlabel('generation')
+    plt.ylabel('fitness')
+    plt.title('GA Fittests Histogram')
+
+
+def show():
     plt.show()
-
-
-#test = []
-#test.append(GenImprovModel(4, 112))
-#test.append(GenImprovModel(7, 93))
-#test.append(GenImprovModel(11, 89))
-#plot_improvement(test)

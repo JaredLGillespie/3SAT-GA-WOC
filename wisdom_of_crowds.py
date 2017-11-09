@@ -1,7 +1,5 @@
-import random
-import itertools
-import math
 from genetic_algorithm import Equation, Chromosome
+
 
 class WOC(object):
     """Object representation of genetic algorithm."""
@@ -20,28 +18,25 @@ class WOC(object):
         self.result = None
         self.counts = []
 
-
     def aggregate(self):
-        #initalize counters
-        for i in enumerate(self.chromosomes[0].genes):
-            self.counts.append(0)
-        #filter chromosomes based on threshold
-        bestChromos = [x for x in self.chromosomes if x.fitness > self.threshold]
-        #count for selecting wiseman
-        for chromo in bestChromos:
-            for i, gene in enumerate(chromo.genes):
-                parity = 1
-                if gene == 0:
-                    parity = -1
-                #add/subtract to counter in a weighted fashion
-                self.counts[i] = self.counts[i] + chromo.fitness*parity
-        #create wiseman
-        wiseGenes = []
-        for count in self.counts:
-            gene = 1
-            if(count <= 0):
-                gene = 0
-            wiseGenes.append(gene)
-        wiseChromo = Chromosome(self.equation, wiseGenes)
+        # Initialize counters
+        self.counts = list(0 for _ in range(len(self.chromosomes[0])))
 
-        self.result = wiseChromo
+        # Filter chromosomes based on threshold
+        best_chromos = [x for x in self.chromosomes if x.fitness > self.threshold]
+
+        # Count for selecting wiseman
+        for chromo in best_chromos:
+            for i, gene in enumerate(chromo.genes):
+                parity = 1 if gene else -1
+                # add/subtract to counter in a weighted fashion
+                self.counts[i] += chromo.fitness * parity
+
+        # Create wiseman
+        wise_genes = []
+        for count in self.counts:
+            gene = 0 if count <= 0 else 1
+            wise_genes.append(gene)
+
+        self.result = Chromosome(self.equation, wise_genes)
+

@@ -1,5 +1,3 @@
-import itertools
-import math
 import random
 
 
@@ -406,8 +404,8 @@ class GA(object):
             for point in pop_points_fit:
                 # Perform mutations
                 child = point
-                if random.random() <= self._mutation_rate:
-                    child = self.mutate(child)
+
+                # Should probably not mutate a good route as it will more than likely make it worse
                 new_population.add(child)
 
         return new_population

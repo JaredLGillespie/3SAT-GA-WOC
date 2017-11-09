@@ -1,5 +1,4 @@
 import getopt
-import math
 import os
 import sys
 import timeit
@@ -71,15 +70,14 @@ def run_ga(data: tuple):
     if is_verbose:
         print(f.format('(GA %s) Generation 0: ' % iteration_number, population.fittest.fitness))
 
-    generational_improvement = [] #for a graph
+    generation_ff = [population.fittest.fitness]
 
     # Evolve population
     for g in range(generations):
         population = ga.evolve(population)
         if is_verbose:
             print(f.format('(GA %s) Generation %s: ' % (iteration_number, g + 1), population.fittest.fitness))
-            generational_improvement.append(display.GenImprovModel(iteration_number, population.fittest.fitness))
-
+        generation_ff.append(population.fittest.fitness)
     toc = timeit.default_timer()
     # End GA algorithm
 
@@ -88,9 +86,8 @@ def run_ga(data: tuple):
         print(f.format('(GA %s) Fittest Fitness.' % iteration_number, population.fittest.fitness))
 
     print(f.format('(GA %s) Time (seconds)' % iteration_number, toc - tic) + '\n')
-    display.plot_improvement(generational_improvement)
 
-    return toc - tic, population.fittest
+    return toc - tic, population.fittest, generation_ff
 
 
 def solve(equation: Equation, mutation_rate: float, crossover_rate: float, population_size: int, generations: int,
@@ -120,25 +117,28 @@ def solve(equation: Equation, mutation_rate: float, crossover_rate: float, popul
     # Run GAs
     ga_results = []
     ga_times = []
+    ga_ffs = []
 
-    ga_toc = 0
-    ga_tic = 0
+    ga_toc, ga_tic = 0, 0
     if threads == 0:
         for d in ga_it():
-            gt, gr = run_ga(d)
+            gt, gr, gff = run_ga(d)
             ga_results.append(gr)
             ga_times.append(gt)
+            ga_ffs.append(gff)
     else:
         ga_tic = timeit.default_timer()
         pool = Pool(processes=threads)
         it = pool.map(run_ga, ga_it(), chunksize=1)
         ga_results = [i[1] for i in it]
         ga_times = [i[0] for i in it]
+        ga_ffs = [i[2] for i in it]
         ga_toc = timeit.default_timer()
 
     # Run WOC
     woc_tic = timeit.default_timer()
     woc = WOC(ga_results, threshold, equation)
+    # TODO: Change to aggregate_alt() to test alternative WOC algorithm
     woc.aggregate()
     woc_toc = timeit.default_timer()
 
@@ -161,8 +161,10 @@ def solve(equation: Equation, mutation_rate: float, crossover_rate: float, popul
 
     # Display graphs
     if show_display:
-        # TODO: Add WOC graphs (in separate thread)
-        pass
+        best_ga_ffs = [g for g in ga_ffs if g[-1] == max_fit][0]
+        display.histogram(best_ga_ffs)
+        display.histograms(*ga_ffs)
+        display.show()
 
 
 def usage():
