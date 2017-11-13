@@ -8,6 +8,7 @@ def histogram(generations: list, **kwargs):
 
     Args:
         generations (list): GA run generation's fittest fitnesses.
+        **kwargs (kwargs): Single argument woc is accepted.
     """
     figure = plt.figure()
     ax = figure.add_subplot(1, 1, 1)
@@ -19,7 +20,7 @@ def histogram(generations: list, **kwargs):
     ax.plot(x, y, color='black')
 
     if 'woc' in kwargs:
-        ax.plot([0, len(args[0])], [kwargs['woc'], kwargs['woc']], color='blue')
+        ax.plot([0, len(generations)], [kwargs['woc'], kwargs['woc']], color='blue')
 
     plt.xlim([0, len(generations)])
     ymin = round(min(generations), 1)
