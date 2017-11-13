@@ -2,7 +2,7 @@ from matplotlib import pyplot as plt
 import numpy as np
 
 
-def histogram(generations: list):
+def histogram(generations: list, **kwargs):
     """
     Display GA Histogram of single run.
 
@@ -17,6 +17,10 @@ def histogram(generations: list):
     y = generations
 
     ax.plot(x, y, color='black')
+
+    if 'woc' in kwargs:
+        ax.plot([0, len(args[0])], [kwargs['woc'], kwargs['woc']], color='blue')
+
     plt.xlim([0, len(generations)])
     ymin = round(min(generations), 1)
     plt.ylim([ymin, 1])
@@ -28,12 +32,13 @@ def histogram(generations: list):
     plt.title('GA Fittest Histogram')
 
 
-def histograms(*args):
+def histograms(*args, **kwargs):
     """
     Display GA Histogram of multiple runs.
 
     Args:
         *args (args): Arguments should be lists containing generations fittest fitnesses.
+        **kwargs (kwargs): Single argument woc is accepted.
     """
     figure = plt.figure()
     ax = figure.add_subplot(1, 1, 1)
@@ -44,6 +49,9 @@ def histograms(*args):
         y = generations
 
         ax.plot(x, y, color='black')
+
+    if 'woc' in kwargs:
+        ax.plot([0, len(args[0])], [kwargs['woc'], kwargs['woc']], color='blue')
 
     plt.xlim([0, len(args[0])])
     ymin = round(min(g[0] for g in args), 1)

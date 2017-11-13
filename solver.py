@@ -138,7 +138,6 @@ def solve(equation: Equation, mutation_rate: float, crossover_rate: float, popul
     # Run WOC
     woc_tic = timeit.default_timer()
     woc = WOC(ga_results, threshold, equation)
-    # TODO: Change to aggregate_alt() to test alternative WOC algorithm
     woc.aggregate()
     woc_toc = timeit.default_timer()
 
@@ -162,8 +161,8 @@ def solve(equation: Equation, mutation_rate: float, crossover_rate: float, popul
     # Display graphs
     if show_display:
         best_ga_ffs = [g for g in ga_ffs if g[-1] == max_fit][0]
-        display.histogram(best_ga_ffs)
-        display.histograms(*ga_ffs)
+        display.histogram(best_ga_ffs, woc=woc.result.fitness)
+        display.histograms(*ga_ffs, woc=woc.result.fitness)
         display.show()
 
 
